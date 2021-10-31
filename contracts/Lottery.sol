@@ -5,6 +5,8 @@ contract Lottery {
     uint public ethToPay = 0.01 ether;
     uint public minNumberPlayers = 10;
 
+    uint lotteryFee = 10;
+
     address payable[] public players;
     address public manager;
 
@@ -13,13 +15,18 @@ contract Lottery {
     }
 
     receive() external payable {
-        require(msg.value == 0.01 ether);
+        require(msg.value == ethToPay);
         players.push(payable(msg.sender));
     }
 
     function transferManager(address newManager) external onlyManager {
         manager = newManager;
     }   
+
+    function setLotteryFee(uint newFee) external onlyManager {
+        require(newFee >= 0 && newFee <= 100);
+        lotteryFee = newFee;
+    }
 
     function setEthToPay(uint _ethToPay) external onlyManager {
         require(_ethToPay > 0);
@@ -45,7 +52,13 @@ contract Lottery {
     function pickWinner() public onlyManager  {
         require(players.length >= minNumberPlayers);
         uint winnerIndex = random() % players.length;
-        players[winnerIndex].transfer(getBalance());
+
+        uint managerFee = getBalance() * lotteryFee / 100;
+        uint winnerPrize = getBalance() * (100 - lotteryFee) / 100;
+
+        players[winnerIndex].transfer(winnerPrize);        
+        payable(manager).transfer(managerFee);
+
         players = new address payable[](0);
     }
 
